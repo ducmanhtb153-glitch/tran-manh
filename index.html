@@ -193,6 +193,9 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .rnd{grid-column:1/-1;height:3.8cqw;margin-top:.2cqw;border-radius:.9cqw;border:.25cqw dashed rgba(242,193,78,.6);background:rgba(20,13,17,.8);color:#F2C14E;font-family:var(--f-display);font-size:1.7cqw;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:.8cqw}
 .rnd span{display:inline-grid;place-items:center;width:2.4cqw;height:2.4cqw;border-radius:50%;background:#F2C14E;color:#1a1014;font-weight:700}
 .rnd:active{transform:scale(.97)}
+.rnd:disabled{opacity:.75;border-style:solid}
+.grid.locked .tile{pointer-events:none}
+.grid.locked .tile:not(.p1):not(.p2){opacity:.45}
 .tile.p1,.tile.p2{transform:scale(1.05);border-width:.5cqw;z-index:1}
 .tile:not(.p1):not(.p2) img{filter:saturate(.6) brightness(.62)}
 .tile:active{transform:scale(.96)}
@@ -1715,7 +1718,7 @@ function show(id) { hideAll(); $(id).hidden = false; showCtrl(false); }
 const ROSTER = ['phong', 'ho', 'bao', 'moc', 'mai', 'ha'].filter(id => CHARS[id]);
 G.p2 = ROSTER[1];
 const sprSrc = (cid, k) => { const s = SPR[cid] && (SPR[cid][k] || SPR[cid].I1); return s ? s.img.src : ''; };
-G.selStep = 0; G.ot = 'cpu'; G.beaten = new Set();
+G.selStep = 0; G.ot = 'cpu'; G.beaten = new Set(); G.rlock = [false, false];
 function tileHTML(id) {
   const c = CHARS[id], src = SRC[c.face] || '';
   return '<button class="tile" type="button" data-char="' + id + '" style="--c:' + c.color + '" aria-label="' + c.name + '"><img alt="" src="' + src + '"><b></b><i class="tg t1">1P</i><i class="tg t2"></i></button>';
@@ -1723,20 +1726,24 @@ function tileHTML(id) {
 $('roster').innerHTML = ROSTER.map(tileHTML).join('') + '<button class="rnd" type="button" id="rnd"><span>?</span> Chọn ngẫu nhiên</button>';
 let rndTimer = null;
 $('rnd').addEventListener('click', () => {
-  if (rndTimer || (G.mode === 'cpu' && G.selStep === 1 && G.ot === 'human')) return;
-  const cur = () => (G.mode === 'cpu' && G.selStep === 1 ? G.p2 : G.p1);
+  const side = G.mode === 'cpu' && G.selStep === 1 ? 1 : 0;
+  if (rndTimer || G.rlock[side] || (side === 1 && G.ot === 'human')) return;
+  const cur = () => (side ? G.p2 : G.p1);
   let n = 0; const total = 9 + Math.floor(Math.random() * 4);
-  // quick roulette through the roster, then stop on the pick
+  G.rlock[side] = true; syncSelect();
+  // quick roulette through the roster, then stop on the pick, which is then locked in
   rndTimer = setInterval(() => {
-    const opts = ROSTER.filter(x => x !== cur()); pickChar(opts[Math.floor(Math.random() * opts.length)]);
-    if (++n >= total) { clearInterval(rndTimer); rndTimer = null; }
+    const opts = ROSTER.filter(x => x !== cur()); pickChar(opts[Math.floor(Math.random() * opts.length)], true);
+    if (++n >= total) { clearInterval(rndTimer); rndTimer = null; syncSelect(); }
   }, 70);
 });
 document.querySelectorAll('.tile').forEach(b => {
   b.querySelector('b').textContent = CHARS[b.dataset.char].name;
   b.addEventListener('click', () => pickChar(b.dataset.char));
 });
-function pickChar(id) {
+function pickChar(id, spin) {
+  // a random draw is final: no re-pick for that side
+  if (!spin && G.rlock[G.mode === 'cpu' && G.selStep === 1 ? 1 : 0]) return;
   audio(); sfx.ui();
   if (G.mode === 'cpu') {
     if (G.selStep === 0) { G.p1 = id; pop('figL'); }
@@ -1795,10 +1802,12 @@ function syncSelect() {
     $('diffRow').hidden = G.selStep === 0 || human;
     $('selStatus').textContent = human ? 'Người chơi 2 dùng điện thoại khác, vào bằng mã phòng' : '';
     $('rand').hidden = true; $('rnd').hidden = human; $('steps').hidden = false;
+    st.dataset.keep = '';
     $('st1').className = G.selStep ? 'done' : 'on'; $('st2').className = G.selStep ? 'on' : '';
     st.hidden = false; st.disabled = false;
     st.textContent = !G.selStep ? 'Chọn ' + CHARS[G.p1].name : human ? 'Tạo phòng' : 'Vào trận';
   }
+  { const lk = G.rlock[!online && G.selStep === 1 ? 1 : 0]; $('roster').classList.toggle('locked', lk); $('rnd').disabled = lk; $('rnd').lastChild.textContent = lk ? (rndTimer ? ' Đang quay…' : ' Đã chọn ngẫu nhiên') : ' Chọn ngẫu nhiên'; }
   G.p = [new Fighter(G.p1, 0), new Fighter(online ? (NET.otherCh || G.p1) : G.p2, 1)];
   if (guest) G.p = [new Fighter(NET.otherCh || G.p1, 0), new Fighter(G.p1, 1)];
 }
@@ -1853,7 +1862,7 @@ function fullscreen() {
     if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} }).catch(() => {});
   } catch (e) {}
 }
-$('m1').addEventListener('click', () => { audio(); sfx.ui(); setTimeout(() => sfx.say('choose_your_character'), 250); fullscreen(); G.mode = 'cpu'; G.selStep = 0; show('select'); syncSelect(); });
+$('m1').addEventListener('click', () => { audio(); sfx.ui(); setTimeout(() => sfx.say('choose_your_character'), 250); fullscreen(); G.mode = 'cpu'; G.selStep = 0; G.rlock = [false, false]; show('select'); syncSelect(); });
 $('m2').addEventListener('click', () => { audio(); sfx.ui(); fullscreen(); G.mode = 'online'; show('online'); netReset(); });
 $('selBack').addEventListener('click', () => { sfx.ui(); if (G.mode === 'online') { leaveNet(); show('online'); netReset(); } else if (G.selStep === 1) { G.selStep = 0; syncSelect(); } else goHome(); });
 document.querySelectorAll('[data-ot]').forEach(b => b.addEventListener('click', () => { audio(); sfx.ui(); G.ot = b.dataset.ot; syncSelect(); }));
@@ -1869,7 +1878,7 @@ $('start').addEventListener('click', () => {
 });
 $('resume').addEventListener('click', () => togglePause());
 $('again').addEventListener('click', () => { if (G.net === 'guest') return; clearInterval(nextTimer); nextTimer = null; if (G.net === 'host') G.p2 = NET.otherCh || G.p2; G.p = [new Fighter(G.p1, 0), new Fighter(G.p2, 1)]; showVS(startMatch); });
-const toSelect = () => { sfx.ui(); if (G.net) { goHome(); return; } G.phase = 'menu'; G.ann = null; G.sup = null; G.selStep = 0; G.next = false; show('select'); syncSelect(); };
+const toSelect = () => { sfx.ui(); if (G.net) { goHome(); return; } G.phase = 'menu'; G.ann = null; G.sup = null; G.selStep = 0; G.next = false; G.rlock = [false, false]; show('select'); syncSelect(); };
 let nextTimer = null;
 function toNext() {
   clearInterval(nextTimer); nextTimer = null;
@@ -1882,7 +1891,7 @@ function toNext() {
     G.p2 = left[0] || ROSTER.find(x => x !== G.p1 && x !== G.p2) || G.p2;
     if (!left.length) G.beaten.clear();
   }
-  G.selStep = 1; G.ot = 'cpu'; G.next = true; show('select'); syncSelect();
+  G.selStep = 1; G.ot = 'cpu'; G.next = true; G.rlock[1] = false; show('select'); syncSelect();
 }
 const toHome = () => { sfx.ui(); clearInterval(nextTimer); nextTimer = null; goHome(); };
 $('toSel1').addEventListener('click', toSelect); $('toSel2').addEventListener('click', () => { sfx.ui(); toNext(); });
@@ -2005,6 +2014,7 @@ const NET = { room: null, t: null, code: '', otherCh: null, myCh: null, other: n
 G.net = null;
 function netStatus(s) { $('netStatus').textContent = s; }
 function netReset() {
+  G.rlock = [false, false];
   $('netChoose').hidden = false; $('codeShow').hidden = true; $('codeIn').value = ''; netStatus('');
 }
 async function getRoom() {
