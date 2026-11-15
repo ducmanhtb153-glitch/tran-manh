@@ -58,6 +58,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 /* touch controls */
 .ctrl{position:fixed;inset:0;pointer-events:none;z-index:4}
 .pad{position:absolute;left:max(18px,env(safe-area-inset-left,0px));bottom:max(14px,env(safe-area-inset-bottom,0px));width:min(36vh,190px);height:min(36vh,190px);border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.08),rgba(255,255,255,.03) 60%,transparent 61%),rgba(15,10,14,.35);border:2px solid rgba(242,193,78,.35);pointer-events:auto;touch-action:none}
+.pad::after{content:'Giữ LÙI = ĐỠ';position:absolute;left:50%;bottom:100%;transform:translateX(-50%);margin-bottom:4px;white-space:nowrap;font:600 min(2.6vh,11px) var(--f-body);letter-spacing:.06em;color:rgba(255,236,190,.6);text-shadow:0 1px 2px #000;pointer-events:none}
 .knob{position:absolute;left:50%;top:50%;width:40%;height:40%;margin:-20% 0 0 -20%;border-radius:50%;background:rgba(242,193,78,.55);box-shadow:0 0 12px rgba(242,193,78,.4);transition:transform .04s}
 .btns{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(3,min(15vh,78px));grid-template-rows:repeat(3,min(15vh,78px));gap:min(2vh,10px);pointer-events:auto;touch-action:none}
 .tb{border-radius:50%;padding:0;font-family:var(--f-display);font-weight:700;font-size:min(3.4vh,17px);line-height:1.05;letter-spacing:.02em;text-transform:uppercase;color:#fff;background:rgba(30,20,26,.62);border:2px solid rgba(255,255,255,.28);display:grid;place-items:center;text-align:center;touch-action:none;overflow:hidden}
@@ -313,7 +314,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
       <button class="tb sp" type="button" data-act="s0"></button>
       <button class="tb sp" type="button" data-act="s1"></button>
       <button class="tb sp" type="button" data-act="s2"></button>
-      <button class="tb" type="button" data-act="b">Đỡ</button>
+      <span aria-hidden="true"></span>
       <button class="tb" type="button" data-act="p">Đấm</button>
       <button class="tb" type="button" data-act="k">Đá</button>
       <button class="tb ult" type="button" data-act="ult">Tuyệt chiêu</button>
@@ -1008,6 +1009,8 @@ function updFighter(f, o, inp) {
       if (mv) { startMove(f, mv, o); break; }
       const fw = f.facing > 0 ? inp.r : inp.l, bk = f.facing > 0 ? inp.l : inp.r;
       // holding a direction: after a short moment the walk turns into a dash
+      // holding back while the opponent is striking within reach = guard (hold down-back to guard low)
+      if (bk && !inp.ai && o.state === 'attack' && Math.abs(o.x - f.x) < (o.move && (o.move.special || o.move.ult) ? 460 : 340)) inp.b = true;
       const hdir = (inp.b || inp.d) ? 0 : fw ? 1 : bk ? -1 : 0;
       f.holdT = hdir && hdir === f.holdDir && f.state === 'walk' ? (f.holdT || 0) + 1 : 0; f.holdDir = hdir;
       const wasRun = f.run; f.run = f.holdT > (inp.ai ? 20 : 14);
