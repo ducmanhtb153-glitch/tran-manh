@@ -2008,14 +2008,22 @@ function releaseAll() { padEnd(); TOUCH.b = false; held.forEach(b => b.classList
 try { const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if (ios && !navigator.standalone && window.top === window) $('a2hs').hidden = false; } catch (e) {}
 addEventListener('contextmenu', e => { if (G.phase !== 'menu') e.preventDefault(); });
 /* version tag + self-update check (hosted copy only: a stale cached page offers to reload) */
-const BUILD = '15/11 20:09';
+const BUILD = '15/11 20:13';
 $('buildTag').textContent = 'Bản ' + BUILD;
 function checkUpdate() {
   if (location.protocol !== 'https:' || !/github\.io$/.test(location.hostname)) return;
   fetch('version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(t => {
-    t = t.trim(); if (t && t !== BUILD && G.phase === 'menu') { $('upd').hidden = false; $('upd').onclick = () => location.replace(location.pathname + '?v=' + encodeURIComponent(t)); }
+    t = t.trim(); if (!t || t === BUILD) return;
+    const go = () => location.replace(location.pathname + '?v=' + encodeURIComponent(t));
+    let tried = ''; try { tried = sessionStorage.getItem('updTried') || ''; } catch (e) {}
+    // update by itself, but only from the home/select screens (never mid-fight) and only once per version, so a slow server can't cause a reload loop
+    if (G.phase === 'menu' && !G.net && tried !== t) { try { sessionStorage.setItem('updTried', t); } catch (e) {} $('buildTag').textContent = 'Đang cập nhật…'; go(); }
+    else if (G.phase === 'menu') { $('upd').hidden = false; $('upd').onclick = go; }
+    else G.updPending = true;
   }).catch(() => {});
 }
+setInterval(() => { if (G.updPending && G.phase === 'menu' && !G.net) { G.updPending = false; checkUpdate(); } }, 3000);
+setInterval(checkUpdate, 5 * 60 * 1000);
 checkUpdate(); document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 /* iOS Safari ignores user-scalable=no: stop pinch and double-tap zoom ourselves */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(n => document.addEventListener(n, e => e.preventDefault(), { passive: false }));
