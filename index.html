@@ -613,7 +613,7 @@ function frameKey(f) {
   switch (f.state) {
     case 'idle': return A.idle[Math.floor(t / A.idleRate) % A.idle.length];
     case 'walk': {
-      const n = A.walk.length, i = Math.floor(t / 5) % n;
+      const n = A.walk.length, i = Math.floor(t / (f.run ? 3 : 5)) % n;
       return Math.sign(f.vx) === f.facing ? A.walk[i] : A.walk[n - 1 - i];
     }
     case 'crouch': return A.crouchIn[Math.min(3, 1 + Math.floor(st / 2))];
@@ -1007,16 +1007,22 @@ function updFighter(f, o, inp) {
       const mv = chooseMove(f, inp);
       if (mv) { startMove(f, mv, o); break; }
       const fw = f.facing > 0 ? inp.r : inp.l, bk = f.facing > 0 ? inp.l : inp.r;
+      // holding a direction: after a short moment the walk turns into a dash
+      const hdir = (inp.b || inp.d) ? 0 : fw ? 1 : bk ? -1 : 0;
+      f.holdT = hdir && hdir === f.holdDir && f.state === 'walk' ? (f.holdT || 0) + 1 : 0; f.holdDir = hdir;
+      const wasRun = f.run; f.run = !inp.ai && f.holdT > 14;
+      if (f.run && !wasRun) { dust(f.x - hdir * f.facing * 30, GROUND, 6); sfx.whoosh(0.7); }
       if (inp.b) { f.state = 'block'; f.crouch = inp.d; f.vx = 0; break; }
       if (inp.u) {
         f.state = 'jump'; f.vy = f.c.jumpV; f.crouch = false; f.airMoveUsed = false; f.anim = 0;
-        f.vx = fw ? f.c.jumpX * f.facing : bk ? -f.c.jumpX * f.facing : 0; break;
+        f.vx = (fw ? f.c.jumpX * f.facing : bk ? -f.c.jumpX * f.facing : 0) * (f.run ? 1.35 : 1); f.run = false; break;
       }
       if (inp.d) { f.state = 'crouch'; f.crouch = true; f.vx = 0; break; }
       f.crouch = false;
-      if (fw) { f.state = 'walk'; f.vx = f.c.speed * f.facing; }
-      else if (bk) { f.state = 'walk'; f.vx = -f.c.back * f.facing; }
+      if (fw) { f.state = 'walk'; f.vx = f.c.speed * (f.run ? 1.85 : 1) * f.facing; }
+      else if (bk) { f.state = 'walk'; f.vx = -f.c.back * (f.run ? 1.7 : 1) * f.facing; }
       else { f.state = 'idle'; f.vx = 0; }
+      if (f.run && G.frame % 7 === 0) dust(f.x - hdir * f.facing * 26, GROUND, 2);
       break;
     }
     case 'jump': {
@@ -1241,7 +1247,7 @@ function step() {
   if (G.slow > 0) { G.slow--; if (G.slow % 3) return; }
   const [p1, p2] = G.p, live = G.phase === 'fight';
   const i1 = live ? human(0) : null;
-  const i2 = live ? (G.mode === 'online' ? netInput() : G.mode === '2p' ? human(1) : aiInput(p2, p1)) : null;
+  const i2 = live ? (G.mode === 'online' ? netInput() : G.mode === '2p' ? human(1) : (x => { if (x) x.ai = 1; return x; })(aiInput(p2, p1))) : null;
   updFighter(p1, p2, i1); updFighter(p2, p1, i2);
   if (G.phase !== 'over') separate(p1, p2);
   else { const c = G.p.find(f => f.state === 'win'); if (c) celebrate(c, c === p1 ? p2 : p1); }
