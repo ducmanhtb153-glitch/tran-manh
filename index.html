@@ -1181,6 +1181,8 @@ function applyHit(a, d, h, m) {
     a.vx = -a.facing * 1.5;
     G.hitstop = 5; burst(px, py, '#BFE3FF', 8); sfx.block();
     a.meter = Math.min(100, a.meter + 2);
+    // an ultimate still hurts through a guard (40% of its damage), though it can't finish the opponent off
+    if (m.ult) { const chip = Math.max(1, Math.round(h.dmg * 0.4 * d.c.takes)); d.hp = Math.max(1, d.hp - chip); d.ghostWait = 34; d.flash = 6; burst(px, py, a.c.color, 10); }
     return;
   }
   a.combo = (d.state === 'hit' || d.state === 'fall') ? a.combo + 1 : 1;
@@ -2052,7 +2054,7 @@ function releaseAll() { padEnd(); TOUCH.b = false; held.forEach(b => b.classList
 try { const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if (ios && !navigator.standalone && window.top === window) $('a2hs').hidden = false; } catch (e) {}
 addEventListener('contextmenu', e => { if (G.phase !== 'menu') e.preventDefault(); });
 /* version tag + self-update check (hosted copy only: a stale cached page offers to reload) */
-const BUILD = '15/11 20:43';
+const BUILD = '15/11 20:50';
 $('buildTag').textContent = 'Bản ' + BUILD;
 function checkUpdate() {
   if (location.protocol !== 'https:' || !/github\.io$/.test(location.hostname)) return;
