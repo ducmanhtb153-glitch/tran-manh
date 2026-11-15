@@ -1790,7 +1790,7 @@ function syncSelect() {
   const st = $('start');
   if (online) {
     $('selTitle').textContent = 'Phòng ' + NET.code;
-    $('diffRow').hidden = true; $('otRow').hidden = true; $('steps').hidden = true;
+    $('diffRow').hidden = true; $('otRow').hidden = true; $('steps').hidden = true; $('rnd').hidden = false;
     const ready = !!NET.otherCh;
     $('selStatus').textContent = !ready ? 'Chờ người chơi kia nhập mã ' + NET.code + '…' : G.net === 'host' ? 'Đối thủ đã sẵn sàng' : 'Chờ chủ phòng bắt đầu…';
     st.hidden = G.net !== 'host'; st.disabled = !ready; st.textContent = 'Vào trận';
@@ -1873,7 +1873,7 @@ $('start').addEventListener('click', () => {
   audio(); sfx.ui();
   if (G.mode === 'online') { if (G.net === 'host' && NET.otherCh) { G.p2 = NET.otherCh; G.p = [new Fighter(G.p1, 0), new Fighter(G.p2, 1)]; showVS(startMatch); } return; }
   if (G.selStep === 0) { G.selStep = 1; syncSelect(); return; }
-  if (G.ot === 'human') { G.next = false; G.mode = 'online'; show('online'); netReset(); $('mkRoom').click(); return; }
+  if (G.ot === 'human') { G.next = false; G.mode = 'online'; show('online'); const lk = G.rlock[0]; netReset(); G.rlock[0] = lk; $('mkRoom').click(); return; }
   G.next = false; showVS(startMatch);
 });
 $('resume').addEventListener('click', () => togglePause());
