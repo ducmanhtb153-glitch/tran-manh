@@ -1010,7 +1010,8 @@ function updFighter(f, o, inp) {
       const fw = f.facing > 0 ? inp.r : inp.l, bk = f.facing > 0 ? inp.l : inp.r;
       // holding a direction: after a short moment the walk turns into a dash
       // holding back while the opponent is striking within reach = guard (hold down-back to guard low)
-      if (bk && !inp.ai && o.state === 'attack' && Math.abs(o.x - f.x) < (o.move && (o.move.special || o.move.ult) ? 460 : 340)) inp.b = true;
+      f.guardAll = false;
+      if (bk && !inp.ai && o.state === 'attack' && Math.abs(o.x - f.x) < (o.move && (o.move.special || o.move.ult) ? 620 : 420)) { inp.b = true; f.guardAll = true; }
       const hdir = (inp.b || inp.d) ? 0 : fw ? 1 : bk ? -1 : 0;
       f.holdT = hdir && hdir === f.holdDir && f.state === 'walk' ? (f.holdT || 0) + 1 : 0; f.holdDir = hdir;
       const wasRun = f.run; f.run = f.holdT > (inp.ai ? 20 : 14);
@@ -1051,7 +1052,11 @@ function updFighter(f, o, inp) {
     }
     case 'hit': case 'blockstun': {
       f.stun--; f.vx *= 0.85;
-      if (f.stun <= 0 && !f.air) { f.state = 'idle'; f.crouch = false; o.combo = 0; }
+      if (f.stun <= 0 && !f.air) {
+        const keep = f.state === 'blockstun' && inp && (inp.b || (f.facing > 0 ? inp.l : inp.r));
+        if (keep) { f.state = 'block'; f.vx = 0; } else { f.state = 'idle'; f.crouch = false; f.guardAll = false; }
+        o.combo = 0;
+      }
       break;
     }
     case 'fall': {
@@ -1118,7 +1123,8 @@ function checkHits(a, d) {
 }
 function applyHit(a, d, h, m) {
   const px = (a.x + d.x) / 2 + a.facing * 10, py = a.y + (h.lo + h.hi) / 2;
-  const blocked = d.state === 'block' && !h.unblock && !d.air && ((d.crouch && h.h !== 'high') || (!d.crouch && h.h !== 'low'));
+  // still guarding while recoiling from a blocked hit, so multi-hit moves can't slip through; a hold-back guard covers high and low
+  const blocked = (d.state === 'block' || d.state === 'blockstun') && !h.unblock && !d.air && (d.guardAll || (d.crouch && h.h !== 'high') || (!d.crouch && h.h !== 'low'));
   if (blocked) {
     d.state = 'blockstun'; d.stun = 12 + (m.special ? 4 : 0); d.vx = a.facing * (h.kb * 0.8 + 2);
     a.vx = -a.facing * 1.5;
