@@ -1010,7 +1010,7 @@ function updFighter(f, o, inp) {
       // holding a direction: after a short moment the walk turns into a dash
       const hdir = (inp.b || inp.d) ? 0 : fw ? 1 : bk ? -1 : 0;
       f.holdT = hdir && hdir === f.holdDir && f.state === 'walk' ? (f.holdT || 0) + 1 : 0; f.holdDir = hdir;
-      const wasRun = f.run; f.run = !inp.ai && f.holdT > 14;
+      const wasRun = f.run; f.run = f.holdT > (inp.ai ? 20 : 14);
       if (f.run && !wasRun) { dust(f.x - hdir * f.facing * 30, GROUND, 6); sfx.whoosh(0.7); }
       if (inp.b) { f.state = 'block'; f.crouch = inp.d; f.vx = 0; break; }
       if (inp.u) {
