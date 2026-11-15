@@ -190,12 +190,19 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .tile b{font-size:1.55cqw;padding:.3cqw 0}
 .tile .tg{top:.4cqw;font-size:1.25cqw;padding:.1cqw .6cqw;border-radius:.4cqw}
 .tile .t1{left:.4cqw}.tile .t2{right:.4cqw}
-.rnd{grid-column:1/-1;height:3.8cqw;margin-top:.2cqw;border-radius:.9cqw;border:.25cqw dashed rgba(242,193,78,.6);background:rgba(20,13,17,.8);color:#F2C14E;font-family:var(--f-display);font-size:1.7cqw;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:.8cqw}
-.rnd span{display:inline-grid;place-items:center;width:2.4cqw;height:2.4cqw;border-radius:50%;background:#F2C14E;color:#1a1014;font-weight:700}
+.rnd{grid-column:1/-1;height:4.8cqw;margin-top:.1cqw;border-radius:1cqw;border:.3cqw solid #fff1b8;background:linear-gradient(180deg,#ffd76a,#e8a92c);color:#1a1014;font-family:var(--f-display);font-weight:700;font-size:2.15cqw;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:.9cqw;box-shadow:0 0 1.6cqw rgba(242,193,78,.55);animation:rndPulse 1.6s ease-in-out infinite}
+.rnd span{display:inline-grid;place-items:center;width:3cqw;height:3cqw;border-radius:.6cqw;background:#1a1014;color:#ffd76a;font-size:2cqw;font-weight:700;transform:rotate(-8deg)}
 .rnd:active{transform:scale(.97)}
-.rnd:disabled{opacity:.75;border-style:solid}
+@keyframes rndPulse{50%{box-shadow:0 0 2.6cqw rgba(255,215,106,.95);filter:brightness(1.08)}}
+.rnd:disabled{animation:none;box-shadow:none;background:rgba(20,13,17,.85);color:#F2C14E;border-color:rgba(242,193,78,.7)}
+.rnd:disabled span{background:#F2C14E;color:#1a1014;transform:none;border-radius:50%}
+.rnd.wait:disabled{color:#b9a9a0;border:.25cqw dashed rgba(255,255,255,.3)}
+.rnd.wait:disabled span{background:#6b5f5a}
+.rnd.spin span{animation:rndSpin .25s linear infinite}
+@keyframes rndSpin{to{transform:rotate(352deg)}}
 .grid.locked .tile{pointer-events:none}
 .grid.locked .tile:not(.p1):not(.p2){opacity:.45}
+@media (prefers-reduced-motion:reduce){.rnd,.rnd.spin span{animation:none}}
 .tile.p1,.tile.p2{transform:scale(1.05);border-width:.5cqw;z-index:1}
 .tile:not(.p1):not(.p2) img{filter:saturate(.6) brightness(.62)}
 .tile:active{transform:scale(.96)}
@@ -1727,7 +1734,7 @@ $('roster').innerHTML = ROSTER.map(tileHTML).join('') + '<button class="rnd" typ
 let rndTimer = null;
 $('rnd').addEventListener('click', () => {
   const side = G.mode === 'cpu' && G.selStep === 1 ? 1 : 0;
-  if (rndTimer || G.rlock[side] || (side === 1 && G.ot === 'human')) return;
+  if (rndTimer || G.rlock[side] || (side === 1 && G.ot === 'human') || (G.mode === 'online' && !NET.otherCh)) return;
   const cur = () => (side ? G.p2 : G.p1);
   let n = 0; const total = 9 + Math.floor(Math.random() * 4);
   G.rlock[side] = true; syncSelect();
@@ -1807,7 +1814,13 @@ function syncSelect() {
     st.hidden = false; st.disabled = false;
     st.textContent = !G.selStep ? 'Chọn ' + CHARS[G.p1].name : human ? 'Tạo phòng' : 'Vào trận';
   }
-  { const lk = G.rlock[!online && G.selStep === 1 ? 1 : 0]; $('roster').classList.toggle('locked', lk); $('rnd').disabled = lk; $('rnd').lastChild.textContent = lk ? (rndTimer ? ' Đang quay…' : ' Đã chọn ngẫu nhiên') : ' Chọn ngẫu nhiên'; }
+  {
+    const lk = G.rlock[!online && G.selStep === 1 ? 1 : 0], wait = online && !NET.otherCh, r = $('rnd');
+    $('roster').classList.toggle('locked', lk); r.disabled = lk || wait;
+    r.classList.toggle('wait', wait && !lk); r.classList.toggle('spin', !!rndTimer);
+    r.firstChild.textContent = lk && !rndTimer ? '✓' : '?';
+    r.lastChild.textContent = lk ? (rndTimer ? ' Đang quay…' : ' Đã chọn ngẫu nhiên') : wait ? ' Chờ người chơi 2 vào phòng' : ' Chọn ngẫu nhiên';
+  }
   G.p = [new Fighter(G.p1, 0), new Fighter(online ? (NET.otherCh || G.p1) : G.p2, 1)];
   if (guest) G.p = [new Fighter(NET.otherCh || G.p1, 0), new Fighter(G.p1, 1)];
 }
