@@ -436,22 +436,22 @@ const CHARS = {
   },
   bao: {
     id: 'bao', name: 'Ông Bảo', nick: 'Thiết Đầu Lão', tag: 'Đầu · 63 tuổi', color: '#F5D547', img: 'bao', face: 'fbao', btns: ['cung', 'pha', 'phan'],
-    h: 320, base: 0, speed: 3.4, back: 2.8, jumpV: -14.5, jumpX: 4.0, takes: 0.88,
+    h: 320, base: 0, speed: 4.0, back: 3.2, jumpV: -15, jumpX: 4.4, takes: 0.85,
     specials: [{ m: '623', b: 'J', id: 'phan' }, { m: '236', b: 'J', id: 'pha' }, { m: '6', b: 'J', id: 'cung' }],
     dp: 'phan', fwd: 'pha', mid: ['pha', 'cung'], close: ['cung', 'phan'],
     moves: {
-      J: { t: 18, pose: 'jab', hits: [hb(6, 3, 48, 165, -260, -150, 'high', { kb: 5, stun: 16 })] },
-      K: { t: 26, pose: 'lunge', hits: [hb(8, 4, 58, 190, -200, -90, 'mid', { kb: 7 })] },
-      cJ: { t: 18, pose: 'jab', crouch: true, hits: [hb(5, 4, 45, 140, -170, -80, 'mid', { kb: 4, stun: 16 })] },
-      cK: { t: 26, pose: 'sweep', crouch: true, hits: [hb(8, 4, 50, 195, -60, 0, 'low', { knock: true, kb: 4 })] },
-      aJ: { t: 40, pose: 'air', air: true, hits: [hb(4, 10, 55, 150, -200, -40, 'high')] },
-      aK: { t: 40, pose: 'air', air: true, hits: [hb(5, 10, 60, 170, -180, -20, 'high')] },
-      cung: { name: 'Cụng Đầu', t: 30, special: true, pose: 'lunge', vx: [[3, 10, 4]], hits: [hb(9, 5, 95, 165, -300, -160, 'mid', { kb: 11, stun: 22 })] },
-      pha: { name: 'Đầu Phá Thạch', t: 44, special: true, pose: 'lunge', vx: [[6, 26, 11]], hits: [hb(10, 14, 110, 150, -230, -60, 'mid', { knock: true, kb: 10 })] },
+      J: { t: 16, pose: 'jab', hits: [hb(5, 3, 56, 178, -260, -150, 'high', { kb: 5, stun: 16 })] },
+      K: { t: 25, pose: 'lunge', hits: [hb(7, 4, 68, 205, -200, -90, 'mid', { kb: 7 })] },
+      cJ: { t: 18, pose: 'jab', crouch: true, hits: [hb(5, 4, 52, 152, -170, -80, 'mid', { kb: 4, stun: 16 })] },
+      cK: { t: 26, pose: 'sweep', crouch: true, hits: [hb(8, 4, 58, 205, -60, 0, 'low', { knock: true, kb: 4 })] },
+      aJ: { t: 40, pose: 'air', air: true, hits: [hb(4, 10, 64, 160, -200, -40, 'high')] },
+      aK: { t: 40, pose: 'air', air: true, hits: [hb(5, 10, 68, 180, -180, -20, 'high')] },
+      cung: { name: 'Cụng Đầu', t: 30, special: true, pose: 'lunge', vx: [[2, 10, 5.5]], hits: [hb(7, 6, 115, 190, -300, -130, 'mid', { kb: 12, stun: 24 })] },
+      pha: { name: 'Đầu Phá Thạch', t: 44, special: true, pose: 'lunge', vx: [[5, 26, 12]], hits: [hb(8, 16, 135, 165, -230, -60, 'mid', { knock: true, kb: 10 })] },
       phan: { name: 'Thiết Đầu Phản', t: 46, special: true, pose: 'rise', inv: [1, 10], vy: [[5, -15]], vx: [[5, 14, 2]],
-        hits: [hb(6, 10, 125, 150, -420, -120, 'mid', { knock: true, launch: -12, kb: 6 })] },
-      ult: { name: 'Thần Sơn Đỉnh', t: 88, special: true, ult: true, pose: 'ult', inv: [0, 46], vy: [[14, -13]], vx: [[14, 44, 5]],
-        hits: [hb(40, 5, 110, 180, -260, 0, 'mid', { kb: 3, stun: 30 }), hb(46, 8, 250, 280, -170, 0, 'mid', { knock: true, launch: -10, kb: 12 })] }
+        hits: [hb(5, 11, 150, 165, -420, -100, 'mid', { knock: true, launch: -13, kb: 7 })] },
+      ult: { name: 'Thần Sơn Đỉnh', t: 88, special: true, ult: true, pose: 'ult', inv: [0, 46], vy: [[14, -13]], vx: [[14, 44, 6.5]],
+        hits: [hb(40, 5, 140, 240, -280, 0, 'mid', { kb: 3, stun: 30 }), hb(46, 8, 300, 310, -200, 0, 'mid', { knock: true, launch: -10, kb: 12 })] }
     }
   },
   moc: {
@@ -2030,7 +2030,7 @@ function releaseAll() { padEnd(); TOUCH.b = false; held.forEach(b => b.classList
 try { const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if (ios && !navigator.standalone && window.top === window) $('a2hs').hidden = false; } catch (e) {}
 addEventListener('contextmenu', e => { if (G.phase !== 'menu') e.preventDefault(); });
 /* version tag + self-update check (hosted copy only: a stale cached page offers to reload) */
-const BUILD = '15/11 20:18';
+const BUILD = '15/11 20:25';
 $('buildTag').textContent = 'Bản ' + BUILD;
 function checkUpdate() {
   if (location.protocol !== 'https:' || !/github\.io$/.test(location.hostname)) return;
