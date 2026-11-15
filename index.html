@@ -1175,14 +1175,16 @@ function checkHits(a, d) {
 function applyHit(a, d, h, m) {
   const px = (a.x + d.x) / 2 + a.facing * 10, py = a.y + (h.lo + h.hi) / 2;
   // still guarding while recoiling from a blocked hit, so multi-hit moves can't slip through; a hold-back guard covers high and low
-  const blocked = (d.state === 'block' || d.state === 'blockstun') && !h.unblock && !d.air && (d.guardAll || (d.crouch && h.h !== 'high') || (!d.crouch && h.h !== 'low'));
+  let blocked = (d.state === 'block' || d.state === 'blockstun') && !h.unblock && !d.air && (d.guardAll || (d.crouch && h.h !== 'high') || (!d.crouch && h.h !== 'low'));
+  // an ultimate hurts through a guard (40% of its damage); with too little health left the guard breaks and the hit lands in full
+  const chip = blocked && m.ult ? Math.max(1, Math.round(h.dmg * 0.4 * d.c.takes)) : 0;
+  if (chip >= d.hp) blocked = false;
   if (blocked) {
     d.state = 'blockstun'; d.stun = 12 + (m.special ? 4 : 0); d.vx = a.facing * (h.kb * 0.8 + 2);
     a.vx = -a.facing * 1.5;
     G.hitstop = 5; burst(px, py, '#BFE3FF', 8); sfx.block();
     a.meter = Math.min(100, a.meter + 2);
-    // an ultimate still hurts through a guard (40% of its damage), though it can't finish the opponent off
-    if (m.ult) { const chip = Math.max(1, Math.round(h.dmg * 0.4 * d.c.takes)); d.hp = Math.max(1, d.hp - chip); d.ghostWait = 34; d.flash = 6; burst(px, py, a.c.color, 10); }
+    if (chip) { d.hp -= chip; d.ghostWait = 34; d.flash = 6; burst(px, py, a.c.color, 10); }
     return;
   }
   a.combo = (d.state === 'hit' || d.state === 'fall') ? a.combo + 1 : 1;
@@ -2054,7 +2056,7 @@ function releaseAll() { padEnd(); TOUCH.b = false; held.forEach(b => b.classList
 try { const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if (ios && !navigator.standalone && window.top === window) $('a2hs').hidden = false; } catch (e) {}
 addEventListener('contextmenu', e => { if (G.phase !== 'menu') e.preventDefault(); });
 /* version tag + self-update check (hosted copy only: a stale cached page offers to reload) */
-const BUILD = '15/11 20:50';
+const BUILD = '15/11 20:56';
 $('buildTag').textContent = 'Bản ' + BUILD;
 function checkUpdate() {
   if (location.protocol !== 'https:' || !/github\.io$/.test(location.hostname)) return;
