@@ -1891,6 +1891,7 @@ function buildLineup() {
   });
 }
 function showVS(then) {
+  G.rlock = [false, false];
   const [a, b] = G.p.length ? [G.p[0].c.id, G.p[1].c.id] : [G.p1, G.p2];
   [['L', a], ['R', b]].forEach(([s, cid]) => {
     const c = CHARS[cid];
@@ -1955,12 +1956,13 @@ function toNext() {
     G.p2 = left[0] || ROSTER.find(x => x !== G.p1 && x !== G.p2) || G.p2;
     if (!left.length) G.beaten.clear();
   }
-  G.selStep = 1; G.ot = 'cpu'; G.next = true; G.rlock[1] = false; show('select'); syncSelect();
+  G.selStep = 1; G.ot = 'cpu'; G.next = true; G.rlock = [false, false]; show('select'); syncSelect();
 }
 const toHome = () => { sfx.ui(); clearInterval(nextTimer); nextTimer = null; goHome(); };
 $('toSel1').addEventListener('click', toSelect); $('toSel2').addEventListener('click', () => { sfx.ui(); toNext(); });
 $('toMenu1').addEventListener('click', toHome); $('toMenu2').addEventListener('click', toHome);
 function showOver() {
+  G.rlock = [false, false];   // a finished match frees both sides to pick (or draw at random) again
   show('over');
   $('overTitle').textContent = G.overT || ''; $('overSub').textContent = G.overS || '';
   const w = G.overW || ROSTER.find(id => (G.overT || '').startsWith(CHARS[id].name)) || null;
@@ -2056,7 +2058,7 @@ function releaseAll() { padEnd(); TOUCH.b = false; held.forEach(b => b.classList
 try { const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if (ios && !navigator.standalone && window.top === window) $('a2hs').hidden = false; } catch (e) {}
 addEventListener('contextmenu', e => { if (G.phase !== 'menu') e.preventDefault(); });
 /* version tag + self-update check (hosted copy only: a stale cached page offers to reload) */
-const BUILD = '15/11 20:56';
+const BUILD = '15/11 21:17';
 $('buildTag').textContent = 'Bản ' + BUILD;
 function checkUpdate() {
   if (location.protocol !== 'https:' || !/github\.io$/.test(location.hostname)) return;
