@@ -346,7 +346,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
       <span aria-hidden="true"></span>
       <button class="tb" type="button" data-act="p">Đấm</button>
       <button class="tb" type="button" data-act="k">Đá</button>
-      <button class="tb ult" type="button" data-act="ult">Tuyệt chiêu</button>
+      <button class="tb ult" type="button" data-act="ult">Biến hình</button>
     </div>
   </div>
 
@@ -894,7 +894,7 @@ class Fighter {
     Object.assign(this, {
       x: this.side === 0 ? 420 : 860, y: GROUND, vx: 0, vy: 0, facing: this.side === 0 ? 1 : -1,
       hp: 1000, ghost: 1000, ghostWait: 0, state: 'idle', move: null, moveId: null, mf: 0, hitDone: new Set(), confirmed: false,
-      stun: 0, inv: 0, combo: 0, hist: [], lastP: -99, lastK: -99, flash: 0, trail: [], crouch: false,
+      stun: 0, inv: 0, combo: 0, form: 0, formBoom: false, hist: [], lastP: -99, lastK: -99, flash: 0, trail: [], crouch: false,
       anim: 0, airMoveUsed: false, ai: { t: 20, walk: 0, walkDir: 'r', block: 0, blockLow: false, reacted: false, aaTried: false, cancelTried: false }
     });
   }
@@ -945,12 +945,12 @@ function motion(f, seq, win = 22) {
 }
 function chooseMove(f, inp) {
   if (inp.special) {
-    if (inp.special === 'ult' && f.meter < 100) return null;
+    if (inp.special === 'ult' && (f.meter < 100 || f.form > 0)) return null;
     return f.air ? null : inp.special;
   }
   if (!inp.pp && !inp.pk) return null;
   const fr = G.frame;
-  if (f.meter >= 100 && !f.air && ((inp.pp && inp.pk) || (inp.pp && fr - f.lastK <= 5) || (inp.pk && fr - f.lastP <= 5))) return 'ult';
+  if (f.meter >= 100 && !f.form && !f.air && ((inp.pp && inp.pk) || (inp.pp && fr - f.lastK <= 5) || (inp.pk && fr - f.lastP <= 5))) return 'ult';
   const b = inp.pp ? 'J' : 'K';
   if (f.air) return f.airMoveUsed ? null : 'a' + b;
   const cur = f.hist.length ? f.hist[f.hist.length - 1].d : 5;
@@ -999,7 +999,7 @@ function aiInput(f, o) {
   if (--A.t > 0) return inp;
   A.t = L.react + Math.random() * L.react;
   const r = Math.random();
-  if (f.meter >= 100 && dist < 240 && r < 0.65) { inp.special = 'ult'; return inp; }
+  if (f.meter >= 100 && !f.form && dist < 460 && r < 0.5) { inp.special = 'ult'; return inp; }
   if (dist > 330) {
     if (r < 0.72) { A.walk = 20 + Math.random() * 25; A.walkDir = fwdK; }
     else if (r < 0.86) { inp.u = true; inp[fwdK] = true; }
@@ -1022,7 +1022,16 @@ function aiInput(f, o) {
 
 /* ---------- fighter logic ---------- */
 function faceOpp(f, o) { if (Math.abs(o.x - f.x) > 4) f.facing = o.x > f.x ? 1 : -1; }
+/* full rage: instead of an ultimate strike the fighter transforms for FORM_T frames —
+   stronger hits, faster feet, tougher skin; the rage bar drains as the timer */
+const FORM_T = 480, FORM_DMG = 1.4, FORM_TAKE = 0.75, FORM_SPD = 1.25, FORM_CHIP = 0.25;
+function startForm(f) {
+  f.form = FORM_T; f.formBoom = true; f.meter = 99.9; f.state = 'idle'; f.vx = 0; f.move = null; f.moveId = null; f.crouch = false;
+  f.inv = Math.max(f.inv, 24);
+  G.freeze = 60; G.sup = { f, t: 0 }; sfx.sup(); sfx.line(f.c.id, 'u');
+}
 function startMove(f, id, o) {
+  if (id === 'ult') return startForm(f);
   const m = f.c.moves[id]; if (!m) return;
   if (!m.air) faceOpp(f, o);
   f.state = 'attack'; f.move = m; f.moveId = id; f.mf = 0; f.hitDone = new Set(); f.confirmed = false;
@@ -1043,6 +1052,11 @@ function endMove(f) {
 }
 function updFighter(f, o, inp) {
   f.anim++;
+  if (f.form > 0) {
+    if (f.formBoom) { f.formBoom = false; ultBoom(f.x, f.y - f.c.h * 0.5, f.c.color); G.shake = Math.max(G.shake, 14); G.shock = { x: f.x, y: f.y - f.c.h * 0.5, t: 0, c: f.c.color }; }
+    f.form--; f.meter = f.form / FORM_T * 100;
+    if (f.form <= 0) { f.form = 0; f.meter = 0; burst(f.x, f.y - f.c.h * 0.5, '#ffffff', 16); dust(f.x, GROUND, 8); }
+  }
   if (f.flash > 0) f.flash--;
   if (f.inv > 0) f.inv--;
   if (f.ghostWait > 0) f.ghostWait--; else if (f.ghost > f.hp) f.ghost = Math.max(f.hp, f.ghost - 6);
@@ -1070,12 +1084,12 @@ function updFighter(f, o, inp) {
       if (inp.b) { f.state = 'block'; f.crouch = inp.d; f.vx = 0; break; }
       if (inp.u) {
         f.state = 'jump'; f.vy = f.c.jumpV; f.crouch = false; f.airMoveUsed = false; f.anim = 0;
-        f.vx = (fw ? f.c.jumpX * f.facing : bk ? -f.c.jumpX * f.facing : 0) * (f.run ? 1.35 : 1); f.run = false; break;
+        f.vx = (fw ? f.c.jumpX * f.facing : bk ? -f.c.jumpX * f.facing : 0) * (f.run ? 1.35 : 1) * (f.form > 0 ? FORM_SPD : 1); f.run = false; break;
       }
       if (inp.d) { f.state = 'crouch'; f.crouch = true; f.vx = 0; break; }
       f.crouch = false;
-      if (fw) { f.state = 'walk'; f.vx = f.c.speed * (f.run ? 1.85 : 1) * f.facing; }
-      else if (bk) { f.state = 'walk'; f.vx = -f.c.back * (f.run ? 1.7 : 1) * f.facing; }
+      if (fw) { f.state = 'walk'; f.vx = f.c.speed * (f.run ? 1.85 : 1) * (f.form > 0 ? FORM_SPD : 1) * f.facing; }
+      else if (bk) { f.state = 'walk'; f.vx = -f.c.back * (f.run ? 1.7 : 1) * (f.form > 0 ? FORM_SPD : 1) * f.facing; }
       else { f.state = 'idle'; f.vx = 0; }
       if (f.run && G.frame % 7 === 0) dust(f.x - hdir * f.facing * 26, GROUND, 2);
       break;
@@ -1177,23 +1191,23 @@ function applyHit(a, d, h, m) {
   // still guarding while recoiling from a blocked hit, so multi-hit moves can't slip through; a hold-back guard covers high and low
   let blocked = (d.state === 'block' || d.state === 'blockstun') && !h.unblock && !d.air && (d.guardAll || (d.crouch && h.h !== 'high') || (!d.crouch && h.h !== 'low'));
   // an ultimate hurts through a guard (40% of its damage); with too little health left the guard breaks and the hit lands in full
-  const chip = blocked && m.ult ? Math.max(1, Math.round(h.dmg * 0.4 * d.c.takes)) : 0;
+  const chip = blocked && a.form > 0 ? Math.max(1, Math.round(h.dmg * FORM_DMG * FORM_CHIP * d.c.takes * (d.form > 0 ? FORM_TAKE : 1))) : 0;
   if (chip >= d.hp) blocked = false;
   if (blocked) {
     d.state = 'blockstun'; d.stun = 12 + (m.special ? 4 : 0); d.vx = a.facing * (h.kb * 0.8 + 2);
     a.vx = -a.facing * 1.5;
     G.hitstop = 5; burst(px, py, '#BFE3FF', 8); sfx.block();
-    a.meter = Math.min(100, a.meter + 2);
+    if (!a.form) a.meter = Math.min(100, a.meter + 2);
     if (chip) { d.hp -= chip; d.ghostWait = 34; d.flash = 6; burst(px, py, a.c.color, 10); }
     return;
   }
   a.combo = (d.state === 'hit' || d.state === 'fall') ? a.combo + 1 : 1;
   const scale = Math.max(0.4, 1 - 0.12 * (a.combo - 1));
-  const dmg = Math.max(1, Math.round(h.dmg * scale * d.c.takes));
+  const dmg = Math.max(1, Math.round(h.dmg * scale * d.c.takes * (a.form > 0 ? FORM_DMG : 1) * (d.form > 0 ? FORM_TAKE : 1)));
   d.hp = Math.max(0, d.hp - dmg); d.ghostWait = 34;
   a.confirmed = true;
   // rage builds only from your own punches and kicks that land
-  if (!m.ult) a.meter = Math.min(100, a.meter + dmg * 0.22);
+  if (!a.form) a.meter = Math.min(100, a.meter + dmg * 0.22);
   d.flash = 10; d.crouch = false; d.move = null; d.hitHigh = h.h === 'high' || Math.random() < 0.35;
   const big = h.knock || d.hp <= 0;
   if (big || d.air) { d.state = 'fall'; d.anim = 0; d.vy = h.launch || (d.air ? -6 : -8); d.vx = a.facing * (h.kb || 6); }
@@ -1485,7 +1499,9 @@ function tinted(s, color) {
   return (TINT[id] = c);
 }
 function blit(f, key, x, y, p, facing, alpha, filter, glow, tint) {
-  const s = SPR[f.c.id][key] || SPR[f.c.id].I1; if (!s) return;
+  // a transformed fighter uses its own sprite set when one has been drawn (id + 'X'), else the normal one
+  const set = (f.form > 0 && SPR[f.c.id + 'X']) || SPR[f.c.id];
+  const s = set[key] || set.I1 || SPR[f.c.id][key] || SPR[f.c.id].I1; if (!s) return;
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(x + p.ox, y + p.oy);
@@ -1534,6 +1550,21 @@ function ultAura(f) {
   }
   ctx.restore();
   if (t % 2 === 0) G.sparks.push({ x: cx + (Math.random() - 0.5) * 170, y: f.y - Math.random() * 80, vx: (Math.random() - 0.5) * 2, vy: -5 - Math.random() * 6, t: 0, life: 24, c: Math.random() < 0.4 ? '#ffffff' : col, r: 2 + Math.random() * 2.5 });
+}
+/* transformed state: steady aura, rising embers and crackling arcs around the fighter */
+function formAura(f) {
+  // crackling arcs in front of the fighter, re-rolled every few frames
+  const cx = f.x, t = G.frame, k = Math.min(1, f.form / 60), seed = Math.floor(t / 3);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+  for (let i = 0; i < 4; i++) {
+    let r1 = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453; r1 -= Math.floor(r1);
+    let x = cx + (r1 - 0.5) * 190, y = f.y - 10 - r1 * (f.c.h - 30);
+    const pts = [[x, y]];
+    for (let j = 1; j <= 5; j++) { let r2 = Math.sin(seed * 4.123 + i * 9.7 + j * 31.7) * 9731.13; r2 -= Math.floor(r2); x += (r2 - 0.5) * 70; y -= 12 + r2 * 26; pts.push([x, y]); }
+    [[f.c.color, 7, 0.5], ['#ffffff', 2.5, 0.95]].forEach(([c, w, al]) => { ctx.strokeStyle = c; ctx.lineWidth = w; ctx.globalAlpha = al * k; ctx.beginPath(); pts.forEach((q, j) => j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.stroke(); });
+  }
+  ctx.restore();
+  if (f.form < 90 && f.form % 30 < 15) { ctx.save(); ctx.globalAlpha = 0.6; ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(cx, GROUND + 6, 150, 24, 0, 0, 7); ctx.stroke(); ctx.restore(); }   // about to run out
 }
 function ultFront(f) {
   if (G.sup && G.sup.f === f) return;
@@ -1590,7 +1621,14 @@ function drawFighter(f) {
   if (f.state === 'getup' || (f.inv > 0 && f.state !== 'attack')) alpha = (G.frame % 6 < 3) ? 0.55 : 1;
   if (G.sup && G.sup.f === f) glow = f.c.color;
   if (f.state === 'win' && f.winT > 0) glow = '#ffd76a';
-  blit(f, frameKey(f), f.x, f.y, pose(f), f.facing, alpha, filter, glow);
+  let ps = pose(f);
+  if (f.form > 0) {
+    if (!(G.sup && G.sup.f === f)) ultAura(f);
+    const z = 1.08; ps = Object.assign({}, ps, { sx: ps.sx * z, sy: ps.sy * z });
+    glow = glow || f.c.color; if (!filter) filter = 'saturate(1.5) brightness(1.2) contrast(1.08)';
+  }
+  blit(f, frameKey(f), f.x, f.y, ps, f.facing, alpha, filter, glow);
+  if (f.form > 0 && !(G.sup && G.sup.f === f)) formAura(f);
   if (f.state === 'block' || f.state === 'blockstun') {
     const cy = f.y - (f.crouch ? 120 : 200), r = f.crouch ? 80 : 120;
     ctx.save(); ctx.strokeStyle = 'rgba(160,215,255,.75)'; ctx.lineWidth = 5; ctx.shadowColor = '#7fc4ff'; ctx.shadowBlur = 14;
@@ -1639,13 +1677,13 @@ function hud() {
     const mw = 300, mh = 14, mx = s === 0 ? 40 : CW - 40 - mw, my = 686, full = f.meter >= 100;
     ctx.fillStyle = 'rgba(12,8,12,.85)'; rr(mx - 4, my - 4, mw + 8, mh + 8, 6); ctx.fill();
     const mfw = mw * f.meter / 100;
-    ctx.fillStyle = full ? (G.frame % 20 < 10 ? '#fff1b8' : '#F2C14E') : f.c.color;
+    ctx.fillStyle = f.form > 0 ? (G.frame % 10 < 5 ? '#ffffff' : f.c.color) : full ? (G.frame % 20 < 10 ? '#fff1b8' : '#F2C14E') : f.c.color;
     if (s === 0) ctx.fillRect(mx, my, mfw, mh); else ctx.fillRect(mx + mw - mfw, my, mfw, mh);
     ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 2;
     for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(mx + mw * k / 4, my); ctx.lineTo(mx + mw * k / 4, my + mh); ctx.stroke(); }
     ctx.font = '700 15px ' + FD; ctx.fillStyle = full ? '#F2C14E' : 'rgba(244,237,228,.8)';
     ctx.textAlign = s === 0 ? 'left' : 'right';
-    ctx.fillText(full ? 'TUYỆT CHIÊU SẴN SÀNG' : 'NỘ', s === 0 ? mx : mx + mw, my - 10);
+    ctx.fillText(f.form > 0 ? 'ĐANG BIẾN HÌNH' : full ? 'BIẾN HÌNH SẴN SÀNG' : 'NỘ', s === 0 ? mx : mx + mw, my - 10);
     // combo
     const cu = G.comboUI[s];
     if (cu.t > 0 && cu.n >= 2) {
@@ -1687,7 +1725,7 @@ function render() {
   if (champ) { champ.winT = (champ.winT || 0) + 1; } else G.p.forEach(f => { f.winT = 0; });
   if (G.p.length && G.phase !== 'menu' && G.phase !== 'vs') {
     const [a, b] = G.p, top = champ || ((b.state === 'attack' || (G.sup && G.sup.f === b)) ? b : a);
-    const uf = G.p.find(f => f.state === 'attack' && f.move && f.move.ult);
+    const uf = G.sup ? G.sup.f : null;
     drawFighter(top === a ? b : a);
     if (champ) winSpot(champ);
     if (uf) ultAura(uf);
@@ -2018,7 +2056,7 @@ function syncCtrl() {
     lastUlt = me.c.id;
     document.querySelectorAll('.tb.sp').forEach((b, i) => { const id = me.c.btns[i]; b.textContent = me.c.moves[id].name; b.style.setProperty('--c', me.c.color); });
   }
-  $('btns').querySelector('.ult').classList.toggle('ready', me.meter >= 100);
+  $('btns').querySelector('.ult').classList.toggle('ready', me.meter >= 100 && !me.form);
 }
 const PADR = () => $('pad').getBoundingClientRect();
 let padId = null;
@@ -2058,7 +2096,7 @@ function releaseAll() { padEnd(); TOUCH.b = false; held.forEach(b => b.classList
 try { const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if (ios && !navigator.standalone && window.top === window) $('a2hs').hidden = false; } catch (e) {}
 addEventListener('contextmenu', e => { if (G.phase !== 'menu') e.preventDefault(); });
 /* version tag + self-update check (hosted copy only: a stale cached page offers to reload) */
-const BUILD = '15/11 21:17';
+const BUILD = '16/11 17:37';
 $('buildTag').textContent = 'Bản ' + BUILD;
 function checkUpdate() {
   if (location.protocol !== 'https:' || !/github\.io$/.test(location.hostname)) return;
@@ -2234,7 +2272,7 @@ function netEv(type, a) {
   NET.ev.push([++NET.evId, type, a]); if (NET.ev.length > 20) NET.ev.shift();
 }
 for (const k of Object.keys(sfx)) { const fn = sfx[k]; sfx[k] = (...a) => { if (k !== 'ui') netEv('s', [k].concat(a)); fn(...a); }; sfx['_' + k] = fn; }
-const fsnap = f => [f.c.id, Math.round(f.x), Math.round(f.y), f.facing, f.state, frameKey(f), Math.round(f.hp), Math.round(f.ghost), Math.round(f.meter), f.wins, f.flash, f.inv > 0 ? 1 : 0, f.crouch ? 1 : 0, f.moveId || '', f.anim % 1000, Math.round(f.stun || 0), f.mf || 0];
+const fsnap = f => [f.c.id, Math.round(f.x), Math.round(f.y), f.facing, f.state, frameKey(f), Math.round(f.hp), Math.round(f.ghost), Math.round(f.meter), f.wins, f.flash, f.inv > 0 ? 1 : 0, f.crouch ? 1 : 0, f.moveId || '', f.anim % 1000, Math.round(f.stun || 0), f.mf || 0, f.form || 0];
 function hostSend() {
   if (!NET.t || ++NET.snapT % 2) return;
   const s = {
@@ -2274,7 +2312,7 @@ function guestApply(s) {
     f.facing = a[3] === -1 ? -1 : 1; f.state = String(a[4]); f.netK = String(a[5]);
     f.hp = +a[6] || 0; f.ghost = +a[7] || 0; f.meter = +a[8] || 0; f.wins = +a[9] || 0; f.flash = +a[10] || 0;
     f.inv = a[11] ? 1 : 0; f.crouch = !!a[12]; f.moveId = a[13] || null; f.move = f.c.moves[a[13]] || null;
-    f.anim = +a[14] || 0; f.stun = +a[15] || 0; f.mf = +a[16] || 0;
+    f.anim = +a[14] || 0; f.stun = +a[15] || 0; f.mf = +a[16] || 0; f.form = Math.max(0, Math.min(600, +a[17] || 0));
     if (f.state === 'attack' && !f.move) f.state = 'idle';
   });
   G.time = +s.tm || 0; G.round = +s.rd || 1; G.shake = Math.max(G.shake, +s.sh || 0);
