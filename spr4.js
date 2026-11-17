@@ -1,0 +1,1 @@
+window.SPR_D={};
