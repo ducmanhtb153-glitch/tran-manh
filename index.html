@@ -1247,7 +1247,7 @@ function dust(x, y, n = 10) {
   for (let i = 0; i < n; i++) G.sparks.push({ x: x + (Math.random() - 0.5) * 60, y: y - 4, vx: (Math.random() - 0.5) * 4, vy: -Math.random() * 2.5, t: 0, life: 26, c: 'rgba(214,170,130,.8)', r: 5 + Math.random() * 6, dust: true });
 }
 function tickFx() {
-  for (const s of G.sparks) { s.t++; s.x += s.vx; s.y += s.vy; s.vy += s.dust ? 0.05 : s.conf ? 0.03 : 0.35; s.vx *= 0.94; }
+  for (const s of G.sparks) { s.t++; s.x += s.vx; s.y += s.vy; s.vy += s.fl ? -0.03 : s.dust ? 0.05 : s.conf ? 0.03 : 0.35; s.vx *= 0.94; }
   G.sparks = G.sparks.filter(s => s.t < s.life);
   for (const r of G.rings) r.t++;
   G.rings = G.rings.filter(r => r.t < 16);
@@ -1540,7 +1540,6 @@ function ultAura(f) {
   }
   // glowing ground seal
   ctx.strokeStyle = col; ctx.lineWidth = 5; ctx.globalAlpha = ch ? 0.8 : 0.45;
-  for (let i = 0; i < 2; i++) { const rr2 = 110 + i * 60 + Math.sin(t * 0.3 + i) * 10; ctx.beginPath(); ctx.ellipse(cx, GROUND + 6, rr2, rr2 * 0.16, 0, 0, 7); ctx.stroke(); }
   if (ch) {
     const st = G.sup.t;
     for (let i = 0; i < 30; i++) {
@@ -1567,6 +1566,111 @@ function formAura(f) {
   }
   ctx.restore();
   if (f.form < 90 && f.form % 30 < 15) { ctx.save(); ctx.globalAlpha = 0.6; ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(cx, GROUND + 6, 150, 24, 0, 0, 7); ctx.stroke(); ctx.restore(); }   // about to run out
+}
+/* transformed state: every fighter has an own aura — back layer (behind the sprite) and front layer (over it) */
+const hsh = a => { const r = Math.sin(a * 12.9898) * 43758.5453; return r - Math.floor(r); };
+function flameTongue(x, base, w, hh, sway, c0, c1) {
+  const g = ctx.createLinearGradient(0, base, 0, base - hh); g.addColorStop(0, c0); g.addColorStop(0.55, c1); g.addColorStop(1, 'rgba(0,0,0,0)');
+  // teardrop: pointed at the bottom, fattest low down, licking up to a swaying tip
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x, base); ctx.bezierCurveTo(x - w * 1.6, base - hh * 0.15, x - w * 0.8 + sway * 0.5, base - hh * 0.6, x + sway, base - hh);
+  ctx.bezierCurveTo(x + w * 0.8 + sway * 0.5, base - hh * 0.6, x + w * 1.6, base - hh * 0.15, x, base); ctx.closePath(); ctx.fill();
+}
+function bolt(x, y, n, dx, dy, seed, col, k) {
+  const pts = [[x, y]];
+  for (let j = 1; j <= n; j++) { x += (hsh(seed + j * 3.1) - 0.5) * dx; y -= dy * (0.5 + hsh(seed + j * 7.7)); pts.push([x, y]); }
+  [[col, 7, 0.45], ['#ffffff', 2.4, 0.95]].forEach(([c, w, al]) => { ctx.strokeStyle = c; ctx.lineWidth = w; ctx.globalAlpha = al * k; ctx.beginPath(); pts.forEach((q, j) => j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.stroke(); });
+}
+function formFx(f, front) {
+  const id = f.c.id, col = fcol(f), t = G.frame, cx = f.x, fy = f.y, h = f.c.h, cy = fy - h * 0.5, k = Math.min(1, f.form / 60) * (f.form < 90 && f.form % 20 < 10 ? 0.35 : 1);   // flickers when about to run out
+  const lying = f.state === 'down' || f.state === 'ko';
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (!front) {   // soft glow in the fighter's own colour
+    const R = h * 0.72 + Math.sin(t * 0.12) * 10, g = ctx.createRadialGradient(cx, cy, 10, cx, cy, R);
+    g.addColorStop(0, col + '50'); g.addColorStop(1, col + '00'); ctx.globalAlpha = k; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
+  }
+  if (id === 'phong') {            // LÝ PHONG — golden flames licking up the body
+    if (!front) {
+      ctx.globalAlpha = 0.6 * k;
+      for (let i = 0; i < 9; i++) {
+        const u = i / 8 - 0.5, hh = h * (0.55 + 0.5 * (1 - Math.abs(u) * 1.6)) + Math.sin(t * 0.35 + i * 1.7) * 26;
+        flameTongue(cx + u * 170, fy - 30 - Math.abs(u) * 40, 16 + (i % 3) * 5, lying ? hh * 0.35 : hh * (0.8 + 0.35 * hsh(i * 3.3 + Math.floor(t / 6))), Math.sin(t * 0.22 + i) * 34, i % 2 ? '#ff8a1aee' : col + 'ee', '#ff5a0a77');
+      }
+    }
+    if (front && t % 2 === 0) G.sparks.push({ x: cx + (Math.random() - 0.5) * 150, y: fy - Math.random() * h * 0.8, vx: (Math.random() - 0.5) * 1.2, vy: -2.5 - Math.random() * 2, t: 0, life: 34, c: Math.random() < 0.35 ? '#fff3b0' : col, r: 1.8 + Math.random() * 2, fl: true });
+  } else if (id === 'ho') {        // TRẦN HỔ — crackling blue lightning, electric ring at the feet
+    if (front) {
+      const seed = Math.floor(t / 3);
+      for (let i = 0; i < 5; i++) { const r1 = hsh(seed * 1.3 + i * 7.1); bolt(cx + (r1 - 0.5) * 200, fy - 10 - r1 * (h - 30), 5, 70, 26, seed * 5 + i * 13, col, k); }
+      if (t % 40 < 3) { ctx.globalAlpha = 0.18 * k; ctx.fillStyle = '#bfe0ff'; ctx.beginPath(); ctx.arc(cx, cy, h * 0.6, 0, 7); ctx.fill(); }   // electric flash
+    }
+  } else if (id === 'bao') {       // ÔNG BẢO — silver whirlwind spiralling round him
+    const rings = lying ? [0.15] : [0.18, 0.48, 0.78];
+    rings.forEach((p, i) => {
+      const y = fy - h * p, rx = 120 + i * 14 + Math.sin(t * 0.1 + i) * 6, ry = 24, a0 = t * (0.16 + i * 0.03) + i * 2;
+      for (let s = 0; s < 3; s++) {
+        const a = a0 + s * 2.094, from = a, to = a + 1.8;
+        // draw only the half of each streak that belongs to this layer (behind = upper half of the ellipse)
+        ctx.strokeStyle = s ? '#ffffff' : '#cfe6ff'; ctx.lineWidth = 7 - s * 1.5; ctx.globalAlpha = (front ? 0.85 : 0.45) * k;
+        ctx.beginPath(); let started = false;
+        for (let q = 0; q <= 16; q++) { const aa = from + (to - from) * q / 16, sn = Math.sin(aa); if ((sn > 0) !== front) { started = false; continue; }
+          const x = cx + Math.cos(aa) * rx, yy = y + sn * ry; started ? ctx.lineTo(x, yy) : ctx.moveTo(x, yy); started = true; }
+        ctx.stroke();
+      }
+    });
+  } else if (id === 'moc') {       // LÃO MỘC — jade cracks in the ground and floating stones
+    ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 6; i++) {
+      const a = t * 0.025 + i * 1.047, d = Math.sin(a); if ((d > 0) !== front) continue;
+      const x = cx + Math.cos(a) * (110 + (i % 2) * 25), y = fy - h * (0.15 + 0.13 * i) - Math.sin(t * 0.06 + i) * 10, s = (20 + (i % 3) * 7) * (0.85 + d * 0.15);
+      ctx.globalAlpha = k; ctx.fillStyle = '#2f6b4c'; ctx.strokeStyle = '#7dffb8'; ctx.lineWidth = 4; ctx.shadowColor = col; ctx.shadowBlur = 16; ctx.beginPath();
+      for (let j = 0; j < 6; j++) { const aa = j / 6 * 6.283 + t * 0.02 + i, rr = s * (0.7 + hsh(i * 11 + j) * 0.4); j ? ctx.lineTo(x + Math.cos(aa) * rr, y + Math.sin(aa) * rr) : ctx.moveTo(x + Math.cos(aa) * rr, y + Math.sin(aa) * rr); }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  } else if (id === 'mai') {       // MAI LINH — crimson flame ribbons and swirling peach-blossom petals
+    if (!front) {
+      ctx.globalAlpha = 0.7 * k;
+      for (let i = 0; i < 5; i++) { const u = i / 4 - 0.5; flameTongue(cx + u * 100, fy - 30 - Math.abs(u) * 40, 14, (lying ? 0.3 : 0.7 + 0.2 * Math.sin(t * 0.3 + i)) * h, Math.sin(t * 0.25 + i * 2) * 30, col + 'dd', '#ff9ad088'); }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 9; i++) {
+      const a = t * 0.05 + i * 0.698, d = Math.sin(a); if ((d > 0) !== front) continue;
+      const p = ((t * 0.005 + i * 0.111) % 1), x = cx + Math.cos(a) * (65 + p * 20), y = fy - p * h * 1.05, rot = t * 0.08 + i;
+      ctx.globalAlpha = Math.min(1, (1 - p) * 1.6) * k; ctx.fillStyle = i % 3 ? '#ff5fa2' : '#ffd1e3'; ctx.strokeStyle = '#a3124f'; ctx.lineWidth = 1.5;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.beginPath(); ctx.ellipse(0, 0, 11, 5, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+  } else if (id === 'ha') {        // THU HÀ — solid-coloured lotus (violet petals, gold rims) under her feet, drifting petals, gold sparkles
+    if (!front && !lying) {
+      // lotus bloom standing upright behind her shoulders
+      const bx = cx - f.facing * 22, by = fy - h * 0.66, rot = Math.sin(t * 0.03) * 0.08, pulse = 1 + Math.sin(t * 0.08) * 0.04;
+      ctx.globalCompositeOperation = 'source-over';
+      const petal = (a, R, wdt, c0, c1, rim) => {
+        const tx = bx + Math.sin(a) * R, ty = by - Math.cos(a) * R, gg = ctx.createLinearGradient(bx, by, tx, ty); gg.addColorStop(0, c0); gg.addColorStop(1, c1);
+        ctx.fillStyle = gg; ctx.strokeStyle = rim; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(bx, by);
+        ctx.quadraticCurveTo(bx + Math.sin(a - wdt) * R * 0.75, by - Math.cos(a - wdt) * R * 0.75, tx, ty);
+        ctx.quadraticCurveTo(bx + Math.sin(a + wdt) * R * 0.75, by - Math.cos(a + wdt) * R * 0.75, bx, by); ctx.fill(); ctx.stroke();
+      };
+      ctx.globalAlpha = 0.5 * k;
+      for (let i = -2; i <= 2; i++) petal(rot + i * 0.42, 105 * pulse, 0.2, 'rgba(90,29,140,.2)', '#B45CFF', '#FFD36A');
+      ctx.globalAlpha = 0.6 * k;
+      for (let i = -1; i <= 1; i++) petal(rot + i * 0.45, 75 * pulse, 0.22, 'rgba(138,63,209,.2)', '#E2A8FF', '#FFD36A');
+    } else if (front) {
+      ctx.globalCompositeOperation = 'source-over';
+      for (let i = 0; i < 5; i++) {   // violet lotus petals drifting up around her
+        const a = t * 0.04 + i * 1.257, p = (t * 0.005 + i * 0.2) % 1, d = Math.sin(a);
+        if (d < -0.2) continue;
+        const x = cx + Math.cos(a) * (70 + p * 20), y = fy - 10 - p * h * 0.95;
+        ctx.globalAlpha = Math.min(1, (1 - p) * 1.5) * k; ctx.fillStyle = i % 2 ? '#B45CFF' : '#d79bff'; ctx.strokeStyle = '#FFD36A'; ctx.lineWidth = 1.5;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(t * 0.05 + i); ctx.beginPath(); ctx.moveTo(0, -12); ctx.quadraticCurveTo(8, 0, 0, 12); ctx.quadraticCurveTo(-8, 0, 0, -12); ctx.fill(); ctx.stroke(); ctx.restore();
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 4; i++) {
+        const ph = (t * 0.02 + i * 0.37) % 1, tw = Math.sin(ph * Math.PI), x = cx + (hsh(i * 5.3 + Math.floor(t * 0.02 + i * 0.37)) - 0.5) * 150, y = fy - 20 - hsh(i * 2.7 + Math.floor(t * 0.02 + i * 0.37)) * (h - 20), s = 4 + tw * 8;
+        ctx.globalAlpha = tw * 0.9 * k; ctx.fillStyle = '#FFE08A';
+        ctx.beginPath(); ctx.moveTo(x, y - s * 1.6); ctx.lineTo(x + s * 0.3, y - s * 0.3); ctx.lineTo(x + s * 1.6, y); ctx.lineTo(x + s * 0.3, y + s * 0.3); ctx.lineTo(x, y + s * 1.6); ctx.lineTo(x - s * 0.3, y + s * 0.3); ctx.lineTo(x - s * 1.6, y); ctx.lineTo(x - s * 0.3, y - s * 0.3); ctx.closePath(); ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
 }
 function ultFront(f) {
   if (G.sup && G.sup.f === f) return;
@@ -1625,13 +1729,13 @@ function drawFighter(f) {
   if (f.state === 'win' && f.winT > 0) glow = '#ffd76a';
   let ps = pose(f);
   if (f.form > 0) {
-    if (!(G.sup && G.sup.f === f)) ultAura(f);
+    if (!(G.sup && G.sup.f === f)) formFx(f, false);
     const art = !!SPR[f.c.id + 'X'];   // drawn transformed sprites: no tint or zoom needed
     if (!art) { const z = 1.08; ps = Object.assign({}, ps, { sx: ps.sx * z, sy: ps.sy * z }); if (!filter) filter = 'saturate(1.5) brightness(1.2) contrast(1.08)'; }
     glow = glow || fcol(f);
   }
   blit(f, frameKey(f), f.x, f.y, ps, f.facing, alpha, filter, glow);
-  if (f.form > 0 && !(G.sup && G.sup.f === f)) formAura(f);
+  if (f.form > 0 && !(G.sup && G.sup.f === f)) formFx(f, true);
   if (f.state === 'block' || f.state === 'blockstun') {
     const cy = f.y - (f.crouch ? 120 : 200), r = f.crouch ? 80 : 120;
     ctx.save(); ctx.strokeStyle = 'rgba(160,215,255,.75)'; ctx.lineWidth = 5; ctx.shadowColor = '#7fc4ff'; ctx.shadowBlur = 14;
@@ -2099,7 +2203,7 @@ function releaseAll() { padEnd(); TOUCH.b = false; held.forEach(b => b.classList
 try { const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if (ios && !navigator.standalone && window.top === window) $('a2hs').hidden = false; } catch (e) {}
 addEventListener('contextmenu', e => { if (G.phase !== 'menu') e.preventDefault(); });
 /* version tag + self-update check (hosted copy only: a stale cached page offers to reload) */
-const BUILD = '17/11 17:30';
+const BUILD = '17/11 18:03';
 $('buildTag').textContent = 'Bản ' + BUILD;
 function checkUpdate() {
   if (location.protocol !== 'https:' || !/github\.io$/.test(location.hostname)) return;
