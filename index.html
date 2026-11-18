@@ -571,10 +571,10 @@ const CHARS = {
     }
   },
   quanghuy: {
-    id: 'quanghuy', name: 'Quang Huy', nick: 'Láu Cá', tag: 'Đường phố · láu cá', color: '#9BE22A', img: 'quanghuy', face: 'fquanghuy', btns: ['dep', 'lan', 'hat'],
+    id: 'quanghuy', name: 'Quang Huy', nick: 'Láu Cá', tag: 'Đường phố · láu cá', color: '#9BE22A', img: 'quanghuy', face: 'fquanghuy', btns: ['va', 'lan', 'hat'],
     h: 335, base: 0, speed: 4.8, back: 3.8, jumpV: -17, jumpX: 5.2, takes: 1.05,
-    specials: [{ m: '623', b: 'K', id: 'hat' }, { m: '236', b: 'J', id: 'dep' }, { m: '214', b: 'J', id: 'lan' }],
-    dp: 'hat', fwd: 'dep', mid: ['dep', 'lan'], close: ['lan', 'hat'],
+    specials: [{ m: '623', b: 'K', id: 'hat' }, { m: '236', b: 'J', id: 'va' }, { m: '214', b: 'J', id: 'lan' }],
+    dp: 'hat', fwd: 'va', mid: ['va', 'lan'], close: ['va', 'lan', 'hat'],
     moves: {
       J: { t: 14, pose: 'jab', hits: [hb(4, 3, 42, 160, -290, -200, 'high', { kb: 4, stun: 15 })] },
       K: { t: 24, pose: 'lunge', hits: [hb(7, 4, 56, 205, -200, -90, 'mid', { kb: 9 })] },                  // flip-flop push kick to the belly
@@ -582,7 +582,9 @@ const CHARS = {
       cK: { t: 25, pose: 'sweep', crouch: true, hits: [hb(7, 4, 48, 215, -60, 0, 'low', { knock: true, kb: 4 })] },
       aJ: { t: 40, pose: 'air', air: true, hits: [hb(4, 10, 56, 150, -200, -40, 'high')] },
       aK: { t: 40, pose: 'air', air: true, hits: [hb(5, 10, 60, 160, -200, -60, 'high')] },
-      dep: { name: 'Ném Dép', t: 38, special: true, pose: 'jab', hits: [], proj: { f: 14, vx: 14, dmg: 80, y: -235, life: 70 } },
+      va: { name: 'Vả Liên Hoàn', t: 44, special: true, pose: 'jab', vx: [[3, 20, 3.2]],
+        hits: [5, 9, 13, 17].map(f => hb(f, 3, 24, 185, -300, -170, 'high', { kb: 0.6, stun: 18 }))
+          .concat([hb(25, 4, 70, 200, -290, -120, 'mid', { knock: true, kb: 13, launch: -5 })]) },
       lan: { name: 'Xin Lỗi Đấm Lén', t: 46, special: true, pose: 'lunge', inv: [2, 12], vx: [[17, 21, 9]],
         hits: [hb(20, 4, 95, 190, -300, -160, 'high', { unblock: true, knock: true, kb: 10, launch: -6 })] },
       hat: { name: 'Cước Hất Cằm', t: 42, special: true, pose: 'rise', inv: [1, 8], vy: [[3, -14]], vx: [[3, 12, 2]],
@@ -732,7 +734,7 @@ ANIM.quanghuy = {
     cK: [[0, 'L5'], [3, 'L6'], [6, 'L7'], [17, 'L8']],
     aJ: [[0, 'Q1'], [2, 'Q2'], [4, 'Q3'], [16, 'Q4']],
     aK: [[0, 'Q5'], [2, 'Q6'], [5, 'Q7'], [18, 'Q8']],
-    dep: [[0, 'C1'], [3, 'C2'], [7, 'C3'], [11, 'C4'], [14, 'C5'], [20, 'C6'], [27, 'C7'], [34, 'C8']],
+    va: [[0, 'C1'], [4, 'C2'], [8, 'C3'], [12, 'C4'], [16, 'C5'], [20, 'C6'], [24, 'C7'], [34, 'C8']],
     lan: [[0, 'R1'], [3, 'R2'], [10, 'R3'], [17, 'R4'], [20, 'R5'], [26, 'R6'], [34, 'R7'], [40, 'R8']],
     hat: [[0, 'G1'], [2, 'G2'], [4, 'G3'], [5, 'G4'], [6, 'G5'], [12, 'G6'], [24, 'G7'], [34, 'G8']]
   }
@@ -2400,7 +2402,7 @@ function releaseAll() { padEnd(); TOUCH.b = false; held.forEach(b => b.classList
 try { const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if (ios && !navigator.standalone && window.top === window) $('a2hs').hidden = false; } catch (e) {}
 addEventListener('contextmenu', e => { if (G.phase !== 'menu') e.preventDefault(); });
 /* version tag + self-update check (hosted copy only: a stale cached page offers to reload) */
-const BUILD = '18/11 18:37';
+const BUILD = '18/11 19:00';
 $('buildTag').textContent = 'Bản ' + BUILD;
 function checkUpdate() {
   if (location.protocol !== 'https:' || !/github\.io$/.test(location.hostname)) return;
