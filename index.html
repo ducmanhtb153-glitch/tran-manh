@@ -551,23 +551,23 @@ const CHARS = {
   },
   ducmanh: {
     id: 'ducmanh', name: 'Đức Mạnh', nick: 'Vịnh Xuân Quyền', tag: 'Vịnh Xuân · cận chiến', color: '#22C8B8', img: 'ducmanh', face: 'fducmanh', btns: ['lien', 'dap', 'day'],
-    h: 330, base: 0, speed: 4.2, back: 3.4, jumpV: -16, jumpX: 4.6, takes: 0.95,
+    h: 330, base: 0, speed: 4.4, back: 3.5, jumpV: -16, jumpX: 4.7, takes: 0.92,
     specials: [{ m: '623', b: 'K', id: 'dap' }, { m: '214', b: 'J', id: 'day' }, { m: '6', b: 'J', id: 'lien' }],
     dp: 'dap', fwd: 'day', mid: ['lien', 'day'], close: ['lien', 'dap'],
     moves: {
-      J: { t: 13, pose: 'jab', hits: [hb(4, 3, 38, 160, -260, -180, 'high', { kb: 4, stun: 14 })] },          // vertical-fist punch, very fast
-      K: { t: 24, pose: 'lunge', hits: [hb(7, 4, 52, 195, -200, -90, 'mid', { kb: 7 })] },                  // front heel kick
-      cJ: { t: 13, pose: 'jab', crouch: true, hits: [hb(4, 3, 34, 150, -150, -80, 'mid', { kb: 4, stun: 14 })] },
-      cK: { t: 26, pose: 'sweep', crouch: true, hits: [hb(7, 4, 46, 215, -50, 0, 'low', { knock: true, kb: 4 })] },
-      aJ: { t: 40, pose: 'air', air: true, hits: [hb(4, 10, 52, 160, -200, -60, 'high')] },
-      aK: { t: 40, pose: 'air', air: true, hits: [hb(5, 10, 56, 165, -120, 20, 'high')] },
-      lien: { name: 'Liên Hoàn Quyền', t: 44, special: true, pose: 'jab', vx: [[4, 26, 2.5]],
-        hits: [5, 9, 13, 17, 21].map(f => hb(f, 3, 16, 170, -280, -160, 'high', { kb: 1.2, stun: 16 }))
-          .concat([hb(27, 4, 40, 185, -290, -150, 'high', { knock: true, kb: 9, launch: -5 })]) },
-      dap: { name: 'Cước Đạp Trời', t: 44, special: true, pose: 'rise', inv: [1, 9], vy: [[4, -14]], vx: [[4, 14, 2.5]],
-        hits: [hb(9, 8, 115, 165, -420, -150, 'mid', { knock: true, launch: -12, kb: 7 })] },
-      day: { name: 'Song Chưởng Đẩy Sơn', t: 40, special: true, pose: 'lunge', vx: [[6, 14, 7]],
-        hits: [hb(14, 5, 100, 190, -300, -130, 'mid', { knock: true, kb: 13, launch: -6 })] }
+      J: { t: 13, pose: 'jab', hits: [hb(4, 3, 46, 170, -270, -150, 'high', { kb: 4, stun: 16 })] },          // vertical-fist punch, very fast
+      K: { t: 24, pose: 'lunge', hits: [hb(7, 4, 58, 205, -210, -80, 'mid', { kb: 7 })] },                  // front heel kick
+      cJ: { t: 13, pose: 'jab', crouch: true, hits: [hb(4, 3, 42, 155, -160, -70, 'mid', { kb: 4, stun: 16 })] },
+      cK: { t: 26, pose: 'sweep', crouch: true, hits: [hb(7, 4, 50, 215, -60, 0, 'low', { knock: true, kb: 4 })] },
+      aJ: { t: 40, pose: 'air', air: true, hits: [hb(4, 10, 56, 165, -210, -60, 'high')] },
+      aK: { t: 40, pose: 'air', air: true, hits: [hb(5, 10, 60, 170, -130, 20, 'high')] },
+      lien: { name: 'Liên Hoàn Quyền', t: 44, special: true, pose: 'jab', vx: [[4, 26, 3.5]],
+        hits: [5, 9, 13, 17, 21].map(f => hb(f, 3, 26, 200, -290, -110, 'mid', { kb: 0.6, stun: 18 }))
+          .concat([hb(27, 4, 60, 210, -300, -100, 'mid', { knock: true, kb: 9, launch: -5 })]) },
+      dap: { name: 'Cước Đạp Trời', t: 44, special: true, pose: 'rise', inv: [1, 9], vy: [[3, -14]], vx: [[3, 14, 2.5]],
+        hits: [hb(6, 9, 125, 170, -420, -70, 'mid', { knock: true, launch: -12, kb: 7 })] },
+      day: { name: 'Song Chưởng Đẩy Sơn', t: 40, special: true, pose: 'lunge', vx: [[5, 12, 7.5]],
+        hits: [hb(12, 5, 120, 200, -300, -80, 'mid', { knock: true, kb: 13, launch: -6 })] }
     }
   }
 };
@@ -698,8 +698,8 @@ ANIM.ducmanh = {
     aJ: [[0, 'Q1'], [2, 'Q2'], [4, 'Q3'], [16, 'Q4']],
     aK: [[0, 'Q5'], [2, 'Q6'], [5, 'Q7'], [18, 'Q8']],
     lien: [[0, 'C1'], [4, 'C2'], [8, 'C3'], [12, 'C4'], [16, 'C5'], [20, 'C6'], [26, 'C7'], [36, 'C8']],
-    dap: [[0, 'G1'], [3, 'G2'], [6, 'G3'], [8, 'G4'], [10, 'G5'], [14, 'G6'], [24, 'G7'], [34, 'G8']],
-    day: [[0, 'R1'], [4, 'R2'], [9, 'R3'], [14, 'R4'], [19, 'R5'], [27, 'R6'], [32, 'R7'], [36, 'R8']]
+    dap: [[0, 'G1'], [2, 'G2'], [4, 'G3'], [5, 'G4'], [7, 'G5'], [12, 'G6'], [24, 'G7'], [34, 'G8']],
+    day: [[0, 'R1'], [3, 'R2'], [7, 'R3'], [12, 'R4'], [17, 'R5'], [27, 'R6'], [32, 'R7'], [36, 'R8']]
   }
 };
 if (!SPRDATA.ducmanh) { delete CHARS.ducmanh; delete ANIM.ducmanh; }
@@ -2325,7 +2325,7 @@ function releaseAll() { padEnd(); TOUCH.b = false; held.forEach(b => b.classList
 try { const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); if (ios && !navigator.standalone && window.top === window) $('a2hs').hidden = false; } catch (e) {}
 addEventListener('contextmenu', e => { if (G.phase !== 'menu') e.preventDefault(); });
 /* version tag + self-update check (hosted copy only: a stale cached page offers to reload) */
-const BUILD = '18/11 17:26';
+const BUILD = '18/11 17:35';
 $('buildTag').textContent = 'Bản ' + BUILD;
 function checkUpdate() {
   if (location.protocol !== 'https:' || !/github\.io$/.test(location.hostname)) return;
